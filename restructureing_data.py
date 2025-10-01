@@ -1,66 +1,94 @@
+import os 
+import sys
 import pandas as pd
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col
 from pathlib import Path
 
-# Input & output paths
-DATA_PATH = Path("lightcast_job_postings.csv")
-OUTPUT_DIR = Path("_output1")
-OUTPUT_DIR.mkdir(exist_ok=True)
 
-# Load dataset
-print("Loading dataset...")
-df = pd.read_csv(DATA_PATH)
 
-# 1. Job_Postings
-job_postings = df[[
-    "ID", "TITLE_RAW", "TITLE_CLEAN", "POSTED", "EXPIRED",
-    "SALARY_FROM", "SALARY_TO",
-    "MIN_YEARS_EXPERIENCE", "MAX_YEARS_EXPERIENCE",
-    "SKILLS", "SPECIALIZED_SKILLS", "SOFTWARE_SKILLS",
-    "EMPLOYMENT_TYPE_NAME", "COMPANY"
-]].drop_duplicates()
-job_postings.to_csv(OUTPUT_DIR / "job_postings.csv", index=False)
 
-# 2. Company
-company = df[[
-    "COMPANY", "COMPANY_NAME", "COMPANY_RAW", "COMPANY_IS_STAFFING"
-]].drop_duplicates()
-company.rename(columns={"COMPANY": "COMPANY_ID"}, inplace=True)
-company.to_csv(OUTPUT_DIR / "company.csv", index=False)
+spark = SparkSession.builder.appName("JobPostingsAnalysis").getOrCreate()
+df = spark.read.option("header", "true").option("inferSchema", "true").option("multiLine","true").option("escape", "\"").csv("lightcast_job_postings.csv")
 
-# 3. Job_Location
-job_location = df[[
-    "ID", "CITY_NAME", "STATE_NAME", "COUNTY_NAME", "LOCATION"
-]].drop_duplicates()
-job_location.to_csv(OUTPUT_DIR / "job_location.csv", index=False)
+OUTPUT_DIR = "solution"
+Path(OUTPUT_DIR).mkdir(exist_ok=True)
+company_df = df.select(
+    col("COMPANY").alias("COMPANY_ID"),  
+    col("COMPANY_NAME").alias("COMPANY_NAME"),
+    col("COMPANY_RAW").alias("COMPANY_RAW"),
+    col("COMPANY_IS_STAFFING").alias("COMPANY_IS_STAFFING")
+).distinct()
+company_df.toPandas().to_csv(f"{OUTPUT_DIR}/company.csv", index=False)
 
-# 4. SOC_Details
-soc_details = df[[
-    "ID",
-    "SOC_2021_2", "SOC_2021_2_NAME",
-    "SOC_2021_3", "SOC_2021_3_NAME",
-    "SOC_2021_4", "SOC_2021_4_NAME",
-    "SOC_2021_5", "SOC_2021_5_NAME"
-]].drop_duplicates()
-soc_details.to_csv(OUTPUT_DIR / "soc_details.csv", index=False)
 
-# 5. LOT_Details
-lot_details = df[[
-    "ID",
-    "LOT_CAREER_AREA", "LOT_CAREER_AREA_NAME",
-    "LOT_OCCUPATION", "LOT_OCCUPATION_NAME",
-    "LOT_SPECIALIZED_OCCUPATION", "LOT_SPECIALIZED_OCCUPATION_NAME"
-]].drop_duplicates()
-lot_details.to_csv(OUTPUT_DIR / "lot_details.csv", index=False)
+job_postings_df = df.select(
+    col("ID").alias("JOB_ID"),
+    col("TITLE_RAW").alias("TITLE_RAW"),
+    col("TITLE_CLEAN").alias("TITLE_CLEAN"),
+    col("POSTED").alias("POSTED"),
+    col("EXPIRED").alias("EXPIRED"),
+    col("SALARY_FROM").alias("SALARY_FROM"),
+    col("SALARY_TO").alias("SALARY_TO"),
+    col("MIN_YEARS_EXPERIENCE").alias("MIN_YEARS_EXPERIENCE"),
+    col("MAX_YEARS_EXPERIENCE").alias("MAX_YEARS_EXPERIENCE"),
+    col("SKILLS").alias("SKILLS"),
+    col("SPECIALIZED_SKILLS").alias("SPECIALIZED_SKILLS"),
+    col("SOFTWARE_SKILLS").alias("SOFTWARE_SKILLS"),
+    col("EMPLOYMENT_TYPE_NAME").alias("EMPLOYMENT_TYPE"),
+    col("COMPANY").alias("COMPANY_ID") 
+).distinct()
+job_postings_df.toPandas().to_csv(f"{OUTPUT_DIR}/job_postings.csv", index=False)
 
-# 6. NAICS_Details
-naics_details = df[[
-    "ID",
-    "NAICS_2022_2", "NAICS_2022_2_NAME",
-    "NAICS_2022_3", "NAICS_2022_3_NAME",
-    "NAICS_2022_4", "NAICS_2022_4_NAME",
-    "NAICS_2022_5", "NAICS_2022_5_NAME",
-    "NAICS_2022_6", "NAICS_2022_6_NAME"
-]].drop_duplicates()
-naics_details.to_csv(OUTPUT_DIR / "naics_details.csv", index=False)
+job_location_df = df.select(
+    col("ID").alias("JOB_ID"),   
+    col("CITY_NAME").alias("CITY"),
+    col("STATE_NAME").alias("STATE"),
+    col("COUNTY_NAME").alias("COUNTY"),
+    col("LOCATION").alias("LOCATION")
+).distinct()
+job_location_df.toPandas().to_csv(f"{OUTPUT_DIR}/job_location.csv", index=False)
 
-print("✅ Restructuring complete! Files saved in _output/")
+
+soc_details_df = df.select(
+    col("ID").alias("JOB_ID"),  
+    col("SOC_2021_2").alias("SOC_2"),
+    col("SOC_2021_2_NAME").alias("SOC_2_NAME"),
+    col("SOC_2021_3").alias("SOC_3"),
+    col("SOC_2021_3_NAME").alias("SOC_3_NAME"),
+    col("SOC_2021_4").alias("SOC_4"),
+    col("SOC_2021_4_NAME").alias("SOC_4_NAME"),
+    col("SOC_2021_5").alias("SOC_5"),
+    col("SOC_2021_5_NAME").alias("SOC_5_NAME")
+).distinct()
+soc_details_df.toPandas().to_csv(f"{OUTPUT_DIR}/soc_details.csv", index=False)
+
+
+lot_details_df = df.select(
+    col("ID").alias("JOB_ID"),  
+    col("LOT_CAREER_AREA").alias("LOT_CAREER_AREA"),
+    col("LOT_CAREER_AREA_NAME").alias("LOT_CAREER_AREA_NAME"),
+    col("LOT_OCCUPATION").alias("LOT_OCCUPATION"),
+    col("LOT_OCCUPATION_NAME").alias("LOT_OCCUPATION_NAME"),
+    col("LOT_SPECIALIZED_OCCUPATION").alias("LOT_SPECIALIZED_OCCUPATION"),
+    col("LOT_SPECIALIZED_OCCUPATION_NAME").alias("LOT_SPECIALIZED_OCCUPATION_NAME")
+).distinct()
+lot_details_df.toPandas().to_csv(f"{OUTPUT_DIR}/lot_details.csv", index=False)
+
+
+naics_details_df = df.select(
+    col("ID").alias("JOB_ID"), 
+    col("NAICS_2022_2").alias("NAICS2"),
+    col("NAICS_2022_2_NAME").alias("NAICS2_NAME"),
+    col("NAICS_2022_3").alias("NAICS3"),
+    col("NAICS_2022_3_NAME").alias("NAICS3_NAME"),
+    col("NAICS_2022_4").alias("NAICS4"),
+    col("NAICS_2022_4_NAME").alias("NAICS4_NAME"),
+    col("NAICS_2022_5").alias("NAICS5"),
+    col("NAICS_2022_5_NAME").alias("NAICS5_NAME"),
+    col("NAICS_2022_6").alias("NAICS6"),
+    col("NAICS_2022_6_NAME").alias("NAICS6_NAME")
+).distinct()
+naics_details_df.toPandas().to_csv(f"{OUTPUT_DIR}/naics_details.csv", index=False)
+
+spark.stop()
