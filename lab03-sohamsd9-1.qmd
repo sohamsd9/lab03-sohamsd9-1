@@ -1,3 +1,20 @@
+
+---
+title: "Lab 03 - sohamsd9"
+author: "Soham Deshkhaire"
+format:
+  docx:
+    toc: true
+    number-sections: true
+jupyter: python3
+execute:
+  echo: true
+  warning: false
+  cache: false
+
+---
+
+```{python}
 import os 
 import sys
 import pandas as pd
